@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网页拍照应用</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #video, #canvas {
+            width: 100%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background: #0056cc;
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        #result {
+            margin-top: 20px;
+        }
+        #result h3 {
+            color: #333;
+        }
+        .download-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #34c759;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+        .download-link:hover {
+            background: #28a745;
+        }
+        .instruction {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>拍照应用</h1>
+    <p class="instruction">点击下方按钮开始使用摄像头拍照</p>
+    
+    <div id="camera-container">
+        <video id="video" autoplay style="display: none;"></video>
+    </div>
+    
+    <div class="controls">
+        <button id="start-camera">启动摄像头</button>
+        <button id="capture" disabled>拍照</button>
+        <button id="reset">重置</button>
+    </div>
+    
+    <div id="result" style="display: none;">
+        <h3>拍摄结果</h3>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <div id="download-section"></div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startCameraBtn = document.getElementById('start-camera');
+        const captureBtn = document.getElementById('capture');
+        const resetBtn = document.getElementById('reset');
+        const resultDiv = document.getElementById('result');
+        const downloadSection = document.getElementById('download-section');
+        const cameraContainer = document.getElementById('camera-container');
+
+        // 启动摄像头
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                // 请求相机权限
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                
+                // 显示视频流
+                video.style.display = 'block';
+                video.srcObject = stream;
+                
+                // 更新按钮状态
+                startCameraBtn.disabled = true;
+                captureBtn.disabled = false;
+                
+                // 显示提示信息
+                const instruction = document.querySelector('.instruction');
+                instruction.textContent = '相机已启动，请点击拍照按钮捕获图像';
+            } catch (err) {
+                console.error('摄像头访问错误:', err);
+                alert('无法访问摄像头，请确保已授予权限。在iOS设备上，请在设置中检查Safari的相机权限。');
+            }
+        });
+
+        // 拍照功能
+        captureBtn.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 显示结果区域
+            resultDiv.style.display = 'block';
+            canvas.style.display = 'block';
+            
+            // 清空之前的下载链接
+            downloadSection.innerHTML = '';
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            link.textContent = '保存照片';
+            link.href = canvas.toDataURL('image/jpeg');
+            
+            // 生成时间戳文件名
+            const timestamp = new Date().toISOString()
+                .replace(/T/, '_')
+                .replace(/:/g, '')
+                .replace(/\..+/, '');
+            link.download = `Photo_${timestamp}.jpg`;
+            link.className = 'download-link';
+            
+            // 添加下载说明
+            const downloadInfo = document.createElement('p');
+            downloadInfo.textContent = '点击保存照片后，请在iOS设备上选择"保存到相册"';
+            downloadInfo.className = 'instruction';
+            
+            downloadSection.appendChild(link);
+            downloadSection.appendChild(downloadInfo);
+        });
+
+        // 重置功能
+        resetBtn.addEventListener('click', () => {
+            // 隐藏结果
+            resultDiv.style.display = 'none';
+            canvas.style.display = 'none';
+            downloadSection.innerHTML = '';
+            
+            // 如果视频流存在，停止它
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+            }
+            
+            // 重置按钮状态
+            video.style.display = 'none';
+            startCameraBtn.disabled = false;
+            captureBtn.disabled = true;
+            
+            // 恢复初始提示
+            const instruction = document.querySelector('.instruction');
+            instruction.textContent = '点击下方按钮开始使用摄像头拍照';
+        });
+
+        // 页面加载时检查浏览器兼容性
+        window.addEventListener('load', () => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('您的浏览器不支持相机功能。请使用较新版本的浏览器，如Chrome、Safari或Firefox。');
+                startCameraBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
